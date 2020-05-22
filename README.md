@@ -1,3 +1,4 @@
+# ET0731
 # Introduction
 
 Doorlooker is a simple IoT door lock checker developed for our course in Singapore Polytechnic, IoT security. The project is developed with security in mind adhereing to TR64 standards.
@@ -19,7 +20,8 @@ The project is a joint effort of the following 3:
 - Abnormalities logging and reporting
 
 ### IR Sensor combo
-Two IR sensors lo
+There is a total of two Infrared(IR) sensors, Located at the bottom and side of the doorlock. The purpose of having two IR sensors is to make realworld data collection more reliable, and less prone to false reporting. 
+In the locked position of the lock, the top IR sensor will output a '0' and the side IR sensor will output a '1'. Vice versa for unlocked state.
 
 ### Telegram bot
 The telegram bot handles the inputs from the user as well as outputs to the user. There are many commands to use when inputting to the bot, they are as follow:
@@ -70,6 +72,11 @@ AWS Lambda, Dynamodb, Cloudwatch, Device Defender Detect is used to execute repl
 6. CloudTrail
    1. logs all suspicious aws api, sdk request
    ![](img/cloudtrail.png)
+7. IOT Core
+   1. Each smart device has its own publish/subscribe channel
+   2. Shadow/update and shadow/update/accept to ensure QOS
+   3. Secure MQTTS channel
+   4. Each device specific channel has its unique hashed address
 
 
 # Product Infrastructure
@@ -80,20 +87,20 @@ AWS Lambda, Dynamodb, Cloudwatch, Device Defender Detect is used to execute repl
 ### Architecture diagram:
 ![](img/infrastruct.png)
 
-### Timing Diagram:
-
+# Demonstration and explaination
+[![jebezface](img/jabestface.png)](https://youtu.be/J6YQBXwkBz0)
 
 ## Brief description
 
 As seen, our IR sensor that is connected to the Esp32 detects the state of our door lock and sends the state to AWS IoT which logs the change of state in DynamoDB. Then the user can use our mobile app to check the state of the lock or view past logs of the doorlock.
 
-
 # How to use
 
 ### Step 1 - Manufacturing stage
-Factory executes the script, a new entry of UUID is generated alongside a customized arduino code to be flashed to the smart device
+Factory executes the script [add-new-doorlook.sh](code/cloud/add-new-doorlook.sh), a new entry of UUID is generated alongside a customized arduino code to be flashed to the smart device
 The UUID is then printed onto a sticker that is stuck onto the packaging of the smart device
 A remove only cover is applied on the sticker, to ensure against tempering
+When the device is put out of sevice, the remove script [delete-doorlook.sh](code/cloud/delete-doorlook.sh) is ran to remove entries related to the particular UUID from dynamoDB
 
 ### Step 2 - User telegram setup stage
 User downloads and setups their telegram account. During setup, telegram binds the user to their phone number, and requires a two factor authentication in order to access that particular account
@@ -114,6 +121,9 @@ Upon device connection to the internet, the device will be able to perform a few
 The device will inform the user through telegram message when an change has occured. If the door is unlocked; it will send the exact message to the user, and vice versa
 When the device has been disconnected from the internet, or has been tampered with, an error message will be sent to the user as well as the administrators
 
+# Timing Diagram
+![](img/timing.png)
+
 # Electronics Assembly
 
 Our hardware consist of the following:
@@ -123,13 +133,10 @@ Our hardware consist of the following:
 3. Copper Strip Board (size)
 
 Schematic:
-
+![](img/Schematics.png)
 
 Picture of finished circuit board:
-
-# Circuit diagram
-
-Alternatively you can do PCB milling or PCB etching you can use the Gerber files located at `./schematic/doorlook-gerber` to reproduce the schematic:
+![](img/CircuitBoard.jpeg)
 
 # Mechanical Assembly
 
@@ -140,19 +147,14 @@ We assembled our electronics with the following materials:
 ![](img/3Dcover.png)
 2. T5 Torx screws (6pcs)
 
-The following is a short video on the physical assembly of the 3d printed case with the electronics. The 3d model is located at `./assembly/doorlook-3dmodel.dxf`
 ### Interior of device
 ![](img/Casingandboard.jpeg)
-# Arduino Code
-
-Our Arduino code is located at `./code/doorlook-arduino.ino`, and does primarily 2 things; reading the state of the sensor then sending it to AWS Iot Core. However we also included redundancy features that we explain more in detail in item ....
-Do howeve
 
 # Compliance checklist
 
 ### Dread risk assessment
 |                            | DREAD RISK       |                 |                |                |                |              |
-|----------------------------|------------------|-----------------|----------------|----------------|----------------|--------------|
+| -------------------------- | ---------------- | --------------- | -------------- | -------------- | -------------- | ------------ |
 | Attack                     | Damage Potential | Reproducibility | Exploitability | Affected Users | Discoverablity | Risk (MAX=5) |
 | Spoofing                   |                  |                 |                |                |                |              |
 | WiFi access                | 3                | 5               | 4              | 3              | 1              | 3.2          |
@@ -184,12 +186,36 @@ Do howeve
 
 ### TR64 Checklist
 
-| Attack       | Checklist                                                                                                                                   | TR64 Code                     | Description                                                                                                           |
-|--------------|---------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------|-----------------------------------------------------------------------------------------------------------------------|
-| ESP32        | Tamper-proof Enclosure, No exposed joints/connectors to open device, Secure Communications                                                  | AP-04 AP-03 RS-03             | Enclosure is not easily tampered with, Exposed ports are sealed off, ESP32 uses MQTTS                                 |
-| Telegram API | No disclosure of secure keys, alteration and extraction. Secure crypto processor is employed, client is identified with an unique ID        | FP-01 FP-03 IA-02 AP-02       | Secure transmission of JSON through HTTPS with encryption. Client ID is generated from user initialization of the bot |
+| Attack       | Checklist                                                                                                                                   | TR64 Code                                 | Description                                                                                                           |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| ESP32        | Tamper-proof Enclosure, No exposed joints/connectors to open device, Secure Communications                                                  | AP-04 AP-03 RS-03                         | Enclosure is not easily tampered with, Exposed ports are sealed off, ESP32 uses MQTTS                                 |
+| Telegram API | No disclosure of secure keys, alteration and extraction. Secure crypto processor is employed, client is identified with an unique ID        | FP-01 FP-03 IA-02 AP-02                   | Secure transmission of JSON through HTTPS with encryption. Client ID is generated from user initialization of the bot |
 | AWS system   | Unique non-modifiable IDs. IDs are hashed with salt. Identify and analyse threats.  Data is not stored in clear text, Secure Communications | IA-03<br>IA-01<br>CS-01<br>DP-03<br>RS-03 | Secure unique ids created upon device manufacture, salt generated alongside creation                                  |
-|              |                                                                                                                                             |                               |                                                                                                                       |
-|              |                                                                                                                                             |                               |                                                                                                                       |
-|              |                                                                                                                                             |                               |                                                                                                                       |
-|              |                                                                                                                                             |                               |                                                                                                                       |
+
+
+# Pen-Test
+Peneration tested the telegram chatbot
+
+### Tools used
+- Telegram messenger CLI by vysheng
+- TelegramAPI
+
+### Procedure
+1. Setup both TelegramAPI and Telegram CLI to be linked to an exsisting telegram account
+2. Loop the "msg <peer> Text" command with a short delay within the loop
+
+### Results
+Unfortunantely, the telegram chatbot wasn't able to withstand the low-rate DOS attack we launched, and caused a global downtime of 4 minutes.
+The reason lies in the TelegramAPI. To prevent its own server getting attacked, it has an hard cap of 30 messages per second on each of its telegram bot.
+Depending on how many messages that floods in during its pre-timeout period, the timeout scales accordingly.
+![](img/telepentest.png)
+![](img/denied.jpeg)
+
+### Solution
+We should've...
+1. Implemented a spam check for each of our lambda function, that looks something like this:
+![](img/spam.jpeg)
+
+2. Decrease the threshold of the detection/action execution of CloudWatch.
+So that the DOS attack can be mithigated before the bot is downed globally.
+![](img/cloudwatcherror.png)
